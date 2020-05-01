@@ -4,8 +4,10 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator
 from posts.models import Post, Group
 from .forms import PostForm
+from django.conf.urls import handler404, handler500
 
 User = get_user_model()
+
 
 def index(request):
     post_list = Post.objects.order_by('-pub_date').all()
@@ -69,4 +71,12 @@ def post_edit(request, username, post_id):
             return redirect('post', username=username, post_id=post_id)
         return render(request, 'new_post.html', {'form': form, 'post': post})
     return render(request, 'new_post.html', {'form': PostForm(instance=post), 'post': post})
+
+def page_not_found(request, exception):
+    # Переменная exception содержит отладочную информацию,
+    # выводить её в шаблон пользователской страницы 404 мы не станем
+    return render(request, "misc/404.html", {"path": request.path}, status=404)
+
+def server_error(request):
+    return render(request, "misc/500.html", status=500)
 

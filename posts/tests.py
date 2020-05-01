@@ -2,6 +2,8 @@ from django.test import TestCase, Client
 from posts.models import Post, Group
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
+from os import path
+
 User = get_user_model()
 
 
@@ -70,11 +72,16 @@ class UserTest_Sprint6(TestCase):
         self.client = Client()
         self.user = User.objects.create_user(username='test_user', email='test_user@test.ru', password='testpass1')
         self.group = Group.objects.create(title=' test', slug='test')
-        #small_gif = (b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x00\x00\x00\x21\xf9\x04'
-         #   b'\x01\x0a\x00\x01\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02'
-          #  b'\x02\x4c\x01\x00\x3b')
-        #image = SimpleUploadedFile('small.gif', small_gif, content_type='image/gif')
-        self.post = Post.objects.create(text='Test post with image', author=self.user, group=self.group, image='test_image.jpg')
+        PATH='./posts/small.gif'
+        if path.exists(PATH) and path.isfile(PATH):
+            image = PATH
+        else:
+            small_gif = (b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x00\x00\x00\x21\xf9\x04'
+                         b'\x01\x0a\x00\x01\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02'
+                         b'\x02\x4c\x01\x00\x3b')
+            image = SimpleUploadedFile('small.gif', small_gif, content_type='image/gif')
+
+        self.post = Post.objects.create(text='Test post with image', author=self.user, group=self.group, image=image)
 
     def test_404(self):
         # Проверка что мы не можем найти страницу

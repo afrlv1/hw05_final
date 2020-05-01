@@ -1,11 +1,10 @@
 from django.test import TestCase, Client
-from posts.models import Post, Group
+from posts.models import Post
 from django.contrib.auth import get_user_model
-from django.core.files.uploadedfile import SimpleUploadedFile
 User = get_user_model()
 
 
-class PostsTest_sprint5(TestCase):
+class PostsTest(TestCase):
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(username='test_user', email='test_user@test.ru', password='testpass1')
@@ -30,7 +29,7 @@ class PostsTest_sprint5(TestCase):
         self.assertContains(response_main_page, text=new_post_text)
 
 #Неавторизованный посетитель не может опубликовать пост (его редиректит на страницу входа)
-    def test_not_logged_in(self):
+    def est_not_logged_in(self):
         self.client.logout()
         response = self.client.get('/new/')
         self.assertRedirects(response, '/auth/login/?next=/new/')
@@ -64,36 +63,3 @@ class PostsTest_sprint5(TestCase):
         for url in ('', '/test_user/', f'/test_user/{self.post_id}/'):
             response_post = self.client.get(url)
             self.assertContains(response_post, text=edited_text)
-
-
-class PostsTest_sprint6(TestCase):
-    def setUp(self):
-        self.client = Client()
-        self.user = User.objects.create_user(username='test_user', email='test_user@test.ru', password='testpass1')
-        self.group = Group.objects.create(title='Test group', slug='test', description='test post')
-        small_gif = (b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x00\x00\x00\x21\xf9\x04'
-                     b'\x01\x0a\x00\x01\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02'
-                    b'\x02\x4c\x01\x00\x3b')
-        image = SimpleUploadedFile('small.gif', small_gif, content_type='image/gif')
-        self.post = Post.objects.create(text='Test post with image', author=self.user, group=self.group, image=image)
-
-
-    #проверяем возвращает ли сервер код 404, если страница не найдена.
-    def test_404(self):
-        # формируем GET-запрос к несуществующей странице
-        response = self.client.get('/bad_page/')
-        self.assertEqual(response.status_code, 404)
-
-    #проверка, что на главной странице, на странице профайла и на странице группы
-    # пост с картинкой отображается корректно, с тегом <img>
-    def test_img(self):
-        for url in ('', '/test_user/', f'/test_user/{self.post.id}/', f'/group/test/'):
-            response_post = self.client.get(url)
-            self.assertContains(response_post, '<img')
-
-    def test_non_image_protection(self):
-        # Проверяем что нельзя загрузить не графический файл
-        with open('README.md', 'rb') as doc:
-            response = self.client.post('/new/', {'text': 'Test post winth wrong img', 'image': doc}, follow=True)
-            self.assertNotContains(response, '<img', status_code=200, msg_prefix='', html=False)
-

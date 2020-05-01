@@ -1,10 +1,11 @@
 from django.test import TestCase, Client
-from posts.models import Post
+from posts.models import Post, Group
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 User = get_user_model()
 
 
-class PostsTest(TestCase):
+class PostsTest_Sprint5(TestCase):
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(username='test_user', email='test_user@test.ru', password='testpass1')
@@ -63,3 +64,31 @@ class PostsTest(TestCase):
         for url in ('', '/test_user/', f'/test_user/{self.post_id}/'):
             response_post = self.client.get(url)
             self.assertContains(response_post, text=edited_text)
+
+class UserTest_Sprint6(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='test_user', email='test_user@test.ru', password='testpass1')
+        self.group = Group.objects.create(title=' test', slug='test')
+        #small_gif = (b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x00\x00\x00\x21\xf9\x04'
+         #   b'\x01\x0a\x00\x01\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02'
+          #  b'\x02\x4c\x01\x00\x3b')
+        #image = SimpleUploadedFile('small.gif', small_gif, content_type='image/gif')
+        self.post = Post.objects.create(text='Test post with image', author=self.user, group=self.group, image='test_image.jpg')
+
+    def test_404(self):
+        # Проверка что мы не можем найти страницу
+        response = self.client.get('/bad_page/')
+        self.assertEquals(response.status_code, 404)
+
+    def test_image(self):
+        # Проверка наличия тега изображения на странице
+        for url in ('', '/test_user/', f'/group/test/'):
+            response_post = self.client.get(url)
+            self.assertContains(response_post, '<img')
+
+    def test_non_image_protection(self):
+        # Проверяем что нельзя загрузить не графический файл
+        with open('README.md') as nonImg:
+            response = self.client.post('/new/', {'text': 'Test post with image', 'image': nonImg}, follow=True)
+            self.assertNotContains(response, '<img', status_code=200, msg_prefix='', html=False)

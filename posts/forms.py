@@ -7,4 +7,4 @@ class PostForm(ModelForm):
         # эта форма будет хранить данные в модели
         model = Post
         # на странице формы будут отображаться поля 'group' и 'text'
-        fields = ['group', 'text']
+        fields = ['group', 'text', 'image']

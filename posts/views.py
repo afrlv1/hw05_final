@@ -27,7 +27,7 @@ def group_posts(request, slug):
 @login_required
 def new_post(request):
     if request.method == 'POST':
-        form = PostForm(request.POST)
+        form = PostForm(request.POST or None, files=request.FILES or None)
         if form.is_valid():
             post = form.save(commit=False)
             post.author = request.user
@@ -63,10 +63,17 @@ def post_edit(request, username, post_id):
     if request.user != author:
         return redirect('post', username=username, post_id=post_id)
     if request.method == 'POST':
-        form = PostForm(request.POST, instance=post)
+        form = PostForm(request.POST or None, files=request.FILES or None, instance=post)
         if form.is_valid():
             form.save()
             return redirect('post', username=username, post_id=post_id)
         return render(request, 'new_post.html', {'form': form, 'post': post})
     return render(request, 'new_post.html', {'form': PostForm(instance=post), 'post': post})
 
+def page_not_found(request, exception):
+    # Переменная exception содержит отладочную информацию,
+    # выводить её в шаблон пользователской страницы 404 мы не станем
+    return render(request, "misc/404.html", {"path": request.path}, status=404)
+
+def server_error(request):
+    return render(request, "misc/500.html", status=500)

@@ -24,17 +24,15 @@
 
 <!-- Комментарии -->
 {% for comment in comments %}
-<div class="card mb-sm-n1 shadow-sm">
-<div class="card-body">
-<p class="card-text">
-<!-- Ссылка на страницу автора комментария в атрибуте href; username автора в тексте ссылки -->
-<a href="{% url 'profile' comment.author.username %}"> @{{ comment.author.username }}</a>
-<!-- Дата публикации  -->
-<small class="text-muted">   {{ comment.com_date |date:"d M Y" }} </small>
-<!-- Текст комментария -->
-<p>
-{{ comment.text }}
-</p>
-</div>
-</div>
+    <div class="card my-4">
+                   <h6 class="card-header"><a href="{% url 'profile' comment.author.username %}"> @{{ comment.author.username }}</a>
+        <small class="text-muted">   {{ comment.com_date |date:"d M Y" }} </small>
+                   </h6>
+        <div class="card-body">
+                <form>
+                    <div class="form-group">
+                        {{ comment.text }}
+                    </div>
+        </div>
+    </div>
 {% endfor %}

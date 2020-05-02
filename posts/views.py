@@ -9,16 +9,16 @@ User = get_user_model()
 
 def index(request):
     post_list = Post.objects.order_by('-pub_date').all()
-    paginator = Paginator(post_list, 10)  # показывать по 10 записей на странице.
+    paginator = Paginator(post_list, 5)  # показывать по 10 записей на странице.
     page_number = request.GET.get('page')  # переменная в URL с номером запрошенной страницы
     page = paginator.get_page(page_number)  # получить записи с нужным смещением
-    return render(request, 'index.html', {'page': page, 'paginator': paginator})
+    return render(request, 'index.html', {'page': page, 'paginator': paginator })
 
 
 def group_posts(request, slug):
     group = get_object_or_404(Group, slug=slug)
     posts = Post.objects.filter(group=group).order_by('-pub_date')[:12]
-    paginator = Paginator(posts, 10)  # показывать по 10 записей на странице.
+    paginator = Paginator(posts, 5)  # показывать по 10 записей на странице.
     page_number = request.GET.get('page')  # переменная в URL с номером запрошенной страницы
     page = paginator.get_page(page_number)  # получить записи с нужным смещением
     return render(request, 'group.html', {'page': page,'group': group, 'paginator': paginator})

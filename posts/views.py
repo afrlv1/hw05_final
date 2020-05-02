@@ -2,8 +2,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator
-from posts.models import Post, Group
-from .forms import PostForm
+from posts.models import Post, Group, Comment
+from .forms import PostForm, CommentForm
 
 User = get_user_model()
 
@@ -45,14 +45,16 @@ def profile(request, username):
     paginator = Paginator(posts_profile, 5)  # показывать по 5 записей на странице.
     page_number = request.GET.get('page')  # переменная в URL с номером запрошенной страницы
     page = paginator.get_page(page_number)  # получить записи с нужным смещением
-    return render(request, 'profile.html', {'profile':profile,'posts_count': posts_count, 'paginator': paginator, 'page_num': page_number, 'page':page})
+    return render(request, 'profile.html', {'profile': profile, 'posts_count': posts_count, 'paginator': paginator, 'page_num': page_number, 'page':page})
 
 def post_view(request, username, post_id):
     # тут тело функции
     profile = get_object_or_404(User, username=username)
     post_count = Post.objects.filter(author=profile).count()
     post = get_object_or_404(Post, pk=post_id)
-    return render(request, 'post.html', {'profile': profile, 'posts_count': post_count, 'post': post,})
+    form = CommentForm()
+    comments = Comment.objects.filter(post=post_id)
+    return render(request, 'post.html', {'profile': profile, 'posts_count': post_count, 'post': post, 'form': form, 'comments': comments})
 
 
 @login_required
@@ -69,6 +71,20 @@ def post_edit(request, username, post_id):
             return redirect('post', username=username, post_id=post_id)
         return render(request, 'new_post.html', {'form': form, 'post': post})
     return render(request, 'new_post.html', {'form': PostForm(instance=post), 'post': post})
+
+@login_required
+def add_comment(request, username, post_id):
+    post = get_object_or_404(Post, pk=post_id)
+    if request.method == 'POST':
+        form = CommentForm(request.POST)
+        if form.is_valid():
+            comment = form.save(commit=False)
+            comment.author = request.user
+            comment.post = post
+            comment.save()
+            return redirect('post', username=username, post_id=post_id)
+    form = CommentForm()
+    return redirect('post', username=post.author.username, post_id=post_id)
 
 def page_not_found(request, exception):
     # Переменная exception содержит отладочную информацию,

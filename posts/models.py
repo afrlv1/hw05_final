@@ -21,3 +21,12 @@ class Post(models.Model):
 
     def __str__(self):
         return self.text
+
+class Comment(models.Model):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comment')
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='author_comment')
+    text = models.TextField()
+    com_date = models.DateTimeField('Дата и время публикации', auto_now_add=True, db_index=True)
+
+    def __str__(self):
+        return self.text

@@ -135,37 +135,30 @@ def add_comment(request, username, post_id):
 
 @login_required
 def follow_index(request):
-    following = Follow.objects.filter(user=request.user)
-    post = Post.objects.filter(author__following__in=following).order_by('-pub_date').all()
-
-    paginator = Paginator(post, 5)
-    page_number = request.GET.get('page')
+    author_list = Follow.objects.filter(user=request.user).values_list('author')
+    post_list = Post.objects.filter(author__in=author_list).order_by("-pub_date")
+    paginator = Paginator(post_list, 10)
+    page_number = request.GET.get("page")
     page = paginator.get_page(page_number)
-    return render(request, 'follow.html', {
-        'page': page,
-        'paginator': paginator
-    })
+    return render(request, "follow.html", {"page": page, "paginator": paginator})
 
 
 @login_required
 def profile_follow(request, username):
-    author = get_object_or_404(User, username=username)
-    if request.user == author or Follow.objects.filter(
-            user=request.user, author=author).exists():
-        return redirect('profile', username=username)
-    else:
-        Follow.objects.create(user=request.user, author=author)
-        return redirect('profile', username=username)
+    if request.user.username != username:
+        follower = User.objects.get(username=request.user.username)
+        following = User.objects.get(username=username)
+        already_follows = Follow.objects.filter(user=follower, author=following).exists()
+        if not already_follows:
+            Follow.objects.create(user=follower, author=following)
+    return redirect("profile", username=username)
 
 @login_required
 def profile_unfollow(request, username):
-    author = get_object_or_404(User, username=username)
-    if request.user == author:
-        return redirect('profile', username=username)
-    else:
-        following = Follow.objects.get(user=request.user, author=author)
-        following.delete()
-        return redirect('profile', username=username)
+    follower = User.objects.get(username=request.user.username)
+    following = User.objects.get(username=username)
+    Follow.objects.filter(user=follower, author=following).delete()
+    return redirect("profile", username=username)
 
 
 def page_not_found(request, exception):

@@ -1,16 +1,22 @@
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from posts.models import Post, Group
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from os import path
+from django.core.cache import cache
+from django.core.cache.backends import locmem
 
 User = get_user_model()
 
-
 class PostsTest_Sprint5(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = Client()
-        self.user = User.objects.create_user(username='test_user', email='test_user@test.ru', password='testpass1')
+        self.user = User.objects.create_user(
+            username='test_user',
+            email='test_user@test.ru',
+            password='testpass1'
+        )
         #создаем тестовый пост, который потом будет использоваться для тестов
         self.post = Post.objects.create(text='The test post', author=self.user)
 
@@ -69,8 +75,13 @@ class PostsTest_Sprint5(TestCase):
 
 class UserTest_Sprint6(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = Client()
-        self.user = User.objects.create_user(username='test_user', email='test_user@test.ru', password='testpass1')
+        self.user = User.objects.create_user(
+            username='test_user',
+            email='test_user@test.ru',
+            password='testpass1'
+        )
         self.group = Group.objects.create(title=' test', slug='test')
         PATH='./posts/small.gif'
         if path.exists(PATH) and path.isfile(PATH):
@@ -99,3 +110,96 @@ class UserTest_Sprint6(TestCase):
         with open('README.md') as nonImg:
             response = self.client.post('/new/', {'text': 'Test post with image', 'image': nonImg}, follow=True)
             self.assertNotContains(response, '<img', status_code=200, msg_prefix='', html=False)
+
+    def test_cache(self):
+        self.client.login(username='test_user', password='testpass1')
+        response = self.client.post('/new/', {
+            'text': 'test text'}, follow=True)
+        self.assertRedirects(response, '/')
+        # проверка, что OrderedDict() содержит кеш
+        self.assertTrue(locmem._caches[''])
+        cache.clear()
+        # проверка, что OrderedDict() пустой
+        self.assertFalse(locmem._caches[''])
+
+
+class Subscription(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.client = Client()
+        self.follower = User.objects.create_user(
+            username='testfollower',
+            email='testfollower@test.ru',
+            password='testpass1'
+        )
+        self.following = User.objects.create_user(
+            username='testfollowing',
+            email='testfollowing@test.ru',
+            password='testpass2'
+        )
+
+    def test_follow_unfollow(self):
+        self.client.force_login(self.follower)
+        self.post = Post.objects.create(text='Test subscribe', author=self.following)
+        response = self.client.get(f'/{self.following}/follow/')
+        self.assertRedirects(
+            response, f'/{self.following}/', status_code=302)
+        response = Follow.objects.filter(user=self.follower).exists()
+        self.assertTrue(response)
+        response = self.client.get(f'/{self.following}/unfollow/')
+        self.assertRedirects(
+            response,
+            f'/{self.following}/',
+            status_code=302,
+            target_status_code=200,
+            msg_prefix='',
+            fetch_redirect_response=True,
+        )
+        response = Follow.objects.filter(user=self.follower).exists()
+        self.assertFalse(response)
+
+    def test_post_on_follow_page(self):
+        self.text = 'Test add new post to follow page'
+        self.unfollower = User.objects.create_user(
+            username='testunfollower',
+            email='TestUnFollower@example.com',
+            password='TestUnFollower',
+        )
+        self.client.force_login(self.follower)
+        self.client.get(f'/{self.following}/follow/')
+        self.post = Post.objects.create(text=self.text, author=self.following)
+        response = self.client.get('/follow/')
+        self.assertContains(
+            response, self.text, count=1, status_code=200, msg_prefix='', html=False,
+        )
+        self.client.logout()
+        self.client.force_login(self.unfollower)
+        response = self.client.get('/follow/')
+        self.assertNotContains(
+            response, self.text, html=False,
+        )
+
+    def test_comments(self):
+        self.text = 'Test comments'
+        self.post = Post.objects.create(text='Test post', author=self.following)
+        response = self.client.post(
+            f'/{self.following}/{self.post.pk}/comment/',
+            {'text': 'Ha-ha-ha, I can do it!'},
+        )
+        self.assertRedirects(
+            response,
+            f'/auth/login/?next=/{self.following}/{self.post.pk}/comment/',
+            status_code=302,
+            target_status_code=200,
+            msg_prefix='',
+            fetch_redirect_response=True,
+        )
+        self.client.force_login(self.follower)
+        response = self.client.post(
+            f'/{self.following}/{self.post.pk}/comment/', {'text': self.text}
+        )
+        self.assertEqual(response.status_code, 302)
+        response = self.client.get(f'/{self.following}/{self.post.pk}/')
+        self.assertContains(
+            response, self.text, count=1, status_code=200, msg_prefix='', html=False,
+        )
